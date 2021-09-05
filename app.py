@@ -459,6 +459,86 @@ def deleteInstructor():
     print(deleteResult)
     return jsonify({"m":"Có lỗi xảy ra","e": True})
 
+@app.get("/api/student")
+@jwt_required()
+def getStudent():
+    account = get_jwt_identity()
+    body = request.get_json()
+    students = sqlExecute("select * from student where 1",[],2)
+    return jsonify(students)
+
+@app.post("/api/student")
+@jwt_required()
+def postStudent():
+    account = get_jwt_identity()
+    body = request.get_json()
+    classMajor= body.get("classMajor")
+    studentId = body.get("studentId")
+    fullName = body.get("fullName")
+    address = body.get("address")
+    dateOfBirth = body.get("dateOfBirth")
+    gender = body.get("gender")
+    citizenId = body.get("citizenId")
+
+
+
+    insert = sqlExecute("INSERT INTO `student`( \
+        `CLASS`, `STUDENT_ID`, `FULL_NAME`, `ADDRESS`, `DATE_OF_BIRTH`, `GENDER`, `CITIZEN_ID`) \
+        VALUES (%s,%s,%s,%s,%s,%s,%s)",[classMajor,studentId,fullName,address,dateOfBirth,gender,citizenId])
+
+    if(insert):
+         return jsonify({"m":"Thêm thành công"})
+
+    return jsonify({"m":"Có lỗi xảy ra","e": True})
+
+@app.put("/api/student")
+@jwt_required()
+def putStudent():
+    account = get_jwt_identity()
+    body = request.get_json()
+    id = body.get("id")
+    classMajor= body.get("classMajor")
+    studentId = body.get("studentId")
+    fullName = body.get("fullName")
+    address = body.get("address")
+    dateOfBirth = body.get("dateOfBirth")
+    gender = body.get("gender")
+    citizenId = body.get("citizenId")
+
+    print("Class major")
+    print(classMajor)
+
+    update = sqlExecute("UPDATE `student` SET `CLASS`=%s, `STUDENT_ID`=%s,\
+        `FULL_NAME`=%s,`ADDRESS`=%s,`DATE_OF_BIRTH`=%s,`GENDER`=%s,`CITIZEN_ID`=%s WHERE ID = %s",
+        [classMajor,studentId,fullName,address,dateOfBirth,gender,citizenId,id])
+
+    if(update):
+         return jsonify({"m":"Thay đổi thành công"})
+
+    return jsonify({"m":"Có lỗi xảy ra","e": True})
+
+@app.delete("/api/student")
+@jwt_required()
+def deleteStudent():
+    account = get_jwt_identity()
+    body = request.get_json()
+    password = body.get("password")
+    id = body.get("id")
+
+
+    user = sqlExecute(
+        "SELECT * from manager where ACCOUNT = %s and PASSWORD = %s", [account, password], 1)
+
+    if(user == None):
+        return jsonify({"e": True, "m": "Xác nhận mật khẩu sai"})
+
+    delete = sqlExecute("DELETE FROM `student` WHERE ID = %s",[id])
+    if(delete):
+         return jsonify({"m":"Xóa thành công"})
+
+    return jsonify({"m":"Có lỗi xảy ra","e": True})
+
+
 
 if __name__ == "__main__":
     if prod:

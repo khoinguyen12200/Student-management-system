@@ -69,8 +69,10 @@ def checkEditable(key):
 
 
 
+# -------------------------- MANAGER --------------------------------
 
-@app.post("/api/manager/login")
+
+@app.post("/api/login")
 def sign_in():
 
     data = request.get_json()
@@ -90,7 +92,7 @@ def sign_in():
     return response
 
 
-@app.get("/api/manager/auto-login")
+@app.get("/api/auto-login")
 @jwt_required()
 def auto_login():
     account = get_jwt_identity()
@@ -130,8 +132,8 @@ def changeName():
     account = get_jwt_identity()
 
     body = request.get_json()
-    newName = body['newName']
-    password = body['password']
+    newName = body.get("newName")
+    password = body.get("password")
 
     updated = sqlExecute("UPDATE manager set FULL_NAME = %s where ACCOUNT = %s and PASSWORD = %s", [
         newName, account, password])
@@ -144,10 +146,81 @@ def changeName():
 
 
 
+ 
+
+@app.get("/api/manager")
+@jwt_required()
+def getManager():
+    managers = sqlExecute("SELECT `ID`, `ROOT`, `ACCOUNT`, `FULL_NAME` FROM `manager` WHERE 1",[],2)
+    return jsonify(managers)
 
 
+@app.post("/api/manager")
+@jwt_required()
+def addManager():
+    reqAccount = get_jwt_identity()
+
+    root = sqlExecute("SELECT * FROM `manager` WHERE ACCOUNT = %s AND ROOT = 1",[reqAccount],1)
+    if(root == None):
+        return jsonify({"e": True, "m": "Chỉ tài khoản Root mới có quyền thực hiện hành động này"})
+
+    body = request.get_json()
+    account = body.get('account')
+    password = body.get("password")
+    fullName = body.get("fullName")
+
+    insert = sqlExecute("INSERT INTO `manager`(`ACCOUNT`, `PASSWORD`, `FULL_NAME`) VALUES (%s,%s,%s)",[account,password,fullName])
+
+    if(insert != 0):
+        return jsonify({"m": "Thêm tài khoản thành công"})
+    else:
+        return jsonify({"e": True, "m": "Lỗi xảy ra, không có gì thay đổi"})
+
+@app.delete("/api/manager")
+@jwt_required()
+def deleteManager():
+    reqAccount = get_jwt_identity()
+    body = request.get_json()
+    password = body.get("password")
+    id = body.get("id")
 
 
+    root = sqlExecute("SELECT * FROM `manager` WHERE ACCOUNT = %s AND PASSWORD = %s AND ROOT = 1",[reqAccount,password],1)
+    if(root == None):
+        return jsonify({"e": True, "m": "Chỉ tài khoản Root mới có quyền thực hiện hành động này"})
+
+   
+    delete = sqlExecute("DELETE FROM `manager` WHERE ID = %s",[id])
+
+    if(delete != 0):
+        return jsonify({"m": "Xóa tài khoản thành công"})
+    else:
+        return jsonify({"e": True, "m": "Lỗi xảy ra, không có gì thay đổi"})
+
+
+@app.patch("/api/manager/change-root")
+@jwt_required()
+def updateRoot():
+    reqAccount = get_jwt_identity()
+    body = request.get_json()
+    password = body.get("password")
+    toId = body.get("toId")
+
+    print(password)
+    print(toId)
+
+    root = sqlExecute("SELECT * FROM `manager` WHERE ACCOUNT = %s AND PASSWORD = %s AND ROOT = 1",[reqAccount,password],1)
+    if(root == None):
+        return jsonify({"e": True, "m": "Chỉ tài khoản Root mới có quyền thực hiện hành động này"})
+
+
+    updated2 = sqlExecute("UPDATE `manager` SET `ROOT`=%s WHERE ID=%s",[0,root.get('ID')])
+    updated = sqlExecute("UPDATE `manager` SET `ROOT`=%s WHERE ID=%s",[1,toId])
+   
+    if(updated != 0):
+        return jsonify({"m": "Thay đổi quyền Root thành công"})
+    else:
+        return jsonify({"e": True, "m": "Lỗi xảy ra, không có gì thay đổi"})
 # ------------------------------------    KHOA ----------------
 
 @app.get("/api/manager/department")
@@ -613,21 +686,18 @@ def patchEditable():
     account = get_jwt_identity()
     body = request.get_json()
     password = body.get('password')
-    manager = body.get('manager')
     department = body.get('department')
     major = body.get('major')
     classMajor = body.get('class')
     instructor = body.get('instructor')
     student = body.get('student')
 
-    user = sqlExecute("Select * from manager where ACCOUNT = %s and PASSWORD = %s",[account,password],1)
+    user = sqlExecute("Select * from manager where ACCOUNT = %s and PASSWORD = %s and ROOT = 1",[account,password],1)
     if(user == None):
         return jsonify({"e":True, "m":"Bạn không có quyền quản lý hệ thống"})
 
     updated = 0
-    if(manager != None):
-        update = sqlExecute("UPDATE editable SET MANAGER = %s WHERE 1",[manager])
-        updated += update
+
     if(department != None):
         update = sqlExecute("UPDATE editable SET DEPARTMENT = %s WHERE 1",[department])
         print(str(update))

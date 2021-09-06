@@ -10,7 +10,7 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from flask_jwt_extended import set_access_cookies
-
+from functools import wraps
 prod = False
 
 app = Flask(__name__)
@@ -53,10 +53,21 @@ def sqlExecute(sql, args=[], fetch=0):
         print("Error in sql: " + sql + str(e))
         return 0
 
+def checkEditable(key):
+    def _checkEditable(f):
+        @wraps(f)
+        def __checkEditable(*args, **kwargs):
+            # just do here everything what you need
+            result = sqlExecute("select * from editable where 1",[],1)
+            checked = result.get(key)
+            if(checked == None or checked == False):
+                return jsonify({"e": True, "m":"Hệ thống đã tắt quyền chỉnh sửa nội dung này"})
+            result = f(*args, **kwargs)
+            return result
+        return __checkEditable
+    return _checkEditable
 
-@app.route("/")
-def main():
-    return "Welcome!"
+
 
 
 @app.post("/api/manager/login")
@@ -131,7 +142,13 @@ def changeName():
         return jsonify({"e": True, "m": "Lỗi xảy ra, không có gì thay đổi"})
 
 
-# KHOA
+
+
+
+
+
+
+# ------------------------------------    KHOA ----------------
 
 @app.get("/api/manager/department")
 @jwt_required()
@@ -141,9 +158,8 @@ def getDepartment():
 
     return jsonify(departments)
 
-
-# insertDepartment name sortName
 @app.post("/api/manager/department/insert")
+@checkEditable("DEPARTMENT")
 @jwt_required()
 def insertDepartment():
     account = get_jwt_identity()
@@ -169,6 +185,7 @@ def insertDepartment():
 
 
 @app.post("/api/manager/department/update")
+@checkEditable("DEPARTMENT")
 @jwt_required()
 def updateDepartment():
     account = get_jwt_identity()
@@ -183,17 +200,17 @@ def updateDepartment():
 
     if(name):
         changed = sqlExecute(
-            "UPDATE `department` set NAME = %s where id = %s", [name, id])
+            "UPDATE `department` set NAME = %s where ID = %s", [name, id])
         numberChange += changed
 
     if(sortName):
         changed = sqlExecute(
-            "UPDATE `department` set SORT_NAME = %s where id = %s", [sortName, id])
+            "UPDATE `department` set SORT_NAME = %s where ID = %s", [sortName, id])
         numberChange += changed
 
     if(newId):
         changed = sqlExecute(
-            "UPDATE `department` set ID = %s where id = %s", [newId, id])
+            "UPDATE `department` set ID = %s where ID = %s", [newId, id])
         numberChange += changed
 
     if(numberChange != 0):
@@ -203,6 +220,7 @@ def updateDepartment():
 
 
 @app.post("/api/manager/department/delete")
+@checkEditable("DEPARTMENT")
 @jwt_required()
 def deleteDepartment():
     account = get_jwt_identity()
@@ -224,6 +242,14 @@ def deleteDepartment():
         return jsonify({"e": True, "m": "Lỗi xảy ra, không có gì thay đổi"})
 
 
+
+
+
+
+
+
+
+
 ########################## CHUYÊN NGÀNH ##########################
 
 @app.get("/api/manager/major")
@@ -235,6 +261,7 @@ def getMajor():
 
 
 @app.post("/api/manager/major/insert")
+@checkEditable("MAJOR")
 @jwt_required()
 def insertMajor():
 
@@ -259,6 +286,7 @@ def insertMajor():
 
 
 @app.post("/api/manager/major/update")
+@checkEditable("MAJOR")
 @jwt_required()
 def updatetMajor():
 
@@ -294,6 +322,7 @@ def updatetMajor():
 
 
 @app.post("/api/manager/major/delete")
+@checkEditable("MAJOR")
 @jwt_required()
 def deleteMajor():
     account = get_jwt_identity()
@@ -313,6 +342,13 @@ def deleteMajor():
     return jsonify({"m": "Xóa thành công"})
 
 
+
+
+
+
+
+
+
 ########################## LỚP CHUYÊN NGÀNH ##########################
 
 
@@ -325,6 +361,7 @@ def getClassMajor():
 
 
 @app.post("/api/class-major/insert")
+@checkEditable("CLASS")
 @jwt_required()
 def insertClassMajor():
 
@@ -348,6 +385,7 @@ def insertClassMajor():
 
 
 @app.post("/api/class-major/update")
+@checkEditable("CLASS")
 @jwt_required()
 def updateClassMajor():
 
@@ -370,6 +408,7 @@ def updateClassMajor():
 
 
 @app.post("/api/class-major/delete")
+@checkEditable("CLASS")
 @jwt_required()
 def deleteClassMajor():
     account = get_jwt_identity()
@@ -389,6 +428,16 @@ def deleteClassMajor():
     return jsonify({"m": "Xóa thành công"})
 
 
+
+
+
+
+
+
+
+
+#----------------------- GIÁO VIÊN CỐ VẤN -------------------------------------------------------
+
 @app.get("/api/instructor")
 @jwt_required()
 def getInstructor():
@@ -399,6 +448,7 @@ def getInstructor():
     return jsonify(result)
 
 @app.post("/api/instructor")
+@checkEditable("INSTRUCTOR")
 @jwt_required()
 def postInstructor():
     account = get_jwt_identity()
@@ -419,6 +469,7 @@ def postInstructor():
 
 
 @app.put("/api/instructor")
+@checkEditable("INSTRUCTOR")
 @jwt_required()
 def putInstructor():
     account = get_jwt_identity()
@@ -439,6 +490,7 @@ def putInstructor():
     return jsonify({"m":"Có lỗi xảy ra","e": True})
 
 @app.delete("/api/instructor")
+@checkEditable("INSTRUCTOR")
 @jwt_required()
 def deleteInstructor():
     account = get_jwt_identity()
@@ -459,6 +511,12 @@ def deleteInstructor():
     print(deleteResult)
     return jsonify({"m":"Có lỗi xảy ra","e": True})
 
+
+
+
+
+
+#------------------------------------------ SINH  VIÊN ------------------------------------
 @app.get("/api/student")
 @jwt_required()
 def getStudent():
@@ -468,6 +526,7 @@ def getStudent():
     return jsonify(students)
 
 @app.post("/api/student")
+@checkEditable("STUDENT")
 @jwt_required()
 def postStudent():
     account = get_jwt_identity()
@@ -492,6 +551,7 @@ def postStudent():
     return jsonify({"m":"Có lỗi xảy ra","e": True})
 
 @app.put("/api/student")
+@checkEditable("STUDENT")
 @jwt_required()
 def putStudent():
     account = get_jwt_identity()
@@ -518,6 +578,7 @@ def putStudent():
     return jsonify({"m":"Có lỗi xảy ra","e": True})
 
 @app.delete("/api/student")
+@checkEditable("STUDENT")
 @jwt_required()
 def deleteStudent():
     account = get_jwt_identity()
@@ -537,6 +598,56 @@ def deleteStudent():
          return jsonify({"m":"Xóa thành công"})
 
     return jsonify({"m":"Có lỗi xảy ra","e": True})
+
+
+# ----------------------  QUYỀN CHỈNH SỬA ---------------------------
+
+@app.get("/api/editable")
+def getEditable():
+    result = sqlExecute("select * from editable where 1",[],1)
+    return result
+
+@app.patch("/api/editable")
+@jwt_required()
+def patchEditable():
+    account = get_jwt_identity()
+    body = request.get_json()
+    password = body.get('password')
+    manager = body.get('manager')
+    department = body.get('department')
+    major = body.get('major')
+    classMajor = body.get('class')
+    instructor = body.get('instructor')
+    student = body.get('student')
+
+    user = sqlExecute("Select * from manager where ACCOUNT = %s and PASSWORD = %s",[account,password],1)
+    if(user == None):
+        return jsonify({"e":True, "m":"Bạn không có quyền quản lý hệ thống"})
+
+    updated = 0
+    if(manager != None):
+        update = sqlExecute("UPDATE editable SET MANAGER = %s WHERE 1",[manager])
+        updated += update
+    if(department != None):
+        update = sqlExecute("UPDATE editable SET DEPARTMENT = %s WHERE 1",[department])
+        print(str(update))
+        updated += update
+    if(major != None):
+        update = sqlExecute("UPDATE editable SET MAJOR = %s WHERE 1",[major])
+        updated += update
+    if(classMajor != None):
+        update = sqlExecute("UPDATE editable SET CLASS = %s WHERE 1",[classMajor])
+        updated += update
+    if(instructor != None):
+        update = sqlExecute("UPDATE editable SET INSTRUCTOR = %s WHERE 1",[instructor])
+        updated += update
+    if(student != None):
+        update = sqlExecute("UPDATE editable SET STUDENT = %s WHERE 1",[student])
+        updated += update
+
+    if(updated != 0):
+        return jsonify({"m":"Đã lưu thay đổi"})
+    return jsonify({"e":True, "m":"Không có gì thay đổi"})
 
 
 

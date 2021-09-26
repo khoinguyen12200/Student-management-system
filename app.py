@@ -1,6 +1,4 @@
 from flask import Flask, jsonify, request
-import pymysql
-from pymysql.cursors import DictCursor
 from datetime import timedelta
 import json
 import mysql.connector
@@ -10,10 +8,14 @@ from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
 from flask_jwt_extended import set_access_cookies
+from flask import send_from_directory
 from functools import wraps
-prod = False
+prod = True
 
-app = Flask(__name__)
+app = Flask(__name__,static_folder="client/build",static_url_path="")
+@app.route("/", defaults={'path':''})
+def serve(path):
+    return send_from_directory(app.static_folder,'index.html')
 
 app.config["JWT_SECRET_KEY"] = "my-super-secret"  # Change this!
 # app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
@@ -723,6 +725,6 @@ def patchEditable():
 
 if __name__ == "__main__":
     if prod:
-        app.run()
+        app.run(port=80)
     else:
         app.run(debug=True)
